@@ -195,7 +195,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       const friend = friends.find((f) => f.id === friendId);
       if (!friend) return { ok: false, error: "Unknown connection." };
 
-      const cipherText = encodeMessage(plainText, friend.friendCode);
+      const cipherText = encodeMessage(plainText, vault.friendCode, friend.friendCode);
       const record: DecodedMessage = {
         id: crypto.randomUUID(),
         friendId,
@@ -216,10 +216,11 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
   const decodeIncoming = useCallback(
     (friendId: string, cipherText: string) => {
+      if (!vault) return { ok: false, error: "No vault loaded" };
       const friend = friends.find((f) => f.id === friendId);
       if (!friend) return { ok: false, error: "Unknown connection." };
 
-      const plainText = decodeMessage(cipherText, friend.friendCode);
+      const plainText = decodeMessage(cipherText, vault.friendCode, friend.friendCode);
       const record: DecodedMessage = {
         id: crypto.randomUUID(),
         friendId,
@@ -234,7 +235,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       updateSession((s) => ({ ...s, messages: next }));
       return { ok: true, plainText };
     },
-    [friends, messages],
+    [friends, messages, vault],
   );
 
   const dismissMessage = useCallback(

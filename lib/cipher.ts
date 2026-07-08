@@ -41,9 +41,16 @@ export interface CipherKey {
   b: number;
 }
 
-export function deriveKeyFromFriendCode(friendCode: string): CipherKey {
-  const normalized = friendCode.trim().toUpperCase();
-  const hash = hashString(normalized);
+/**
+ * Derives the shared cipher key from both participants' friend codes.
+ * Sorting before combining means it doesn't matter which side is "me" and
+ * which is "them" - both people in a connection compute the same key.
+ */
+export function deriveKeyFromCodes(codeA: string, codeB: string): CipherKey {
+  const pair = [codeA.trim().toUpperCase(), codeB.trim().toUpperCase()]
+    .sort()
+    .join("|");
+  const hash = hashString(pair);
   const a = VALID_MULTIPLIERS[hash % VALID_MULTIPLIERS.length];
   const b = Math.floor(hash / VALID_MULTIPLIERS.length) % ALPHABET_SIZE;
   return { a, b };
@@ -79,16 +86,24 @@ function shiftChar(
   return String.fromCharCode(base + y);
 }
 
-export function encodeMessage(plainText: string, friendCode: string): string {
-  const key = deriveKeyFromFriendCode(friendCode);
+export function encodeMessage(
+  plainText: string,
+  myFriendCode: string,
+  theirFriendCode: string,
+): string {
+  const key = deriveKeyFromCodes(myFriendCode, theirFriendCode);
   return plainText
     .split("")
     .map((char) => shiftChar(char, key, "encode"))
     .join("");
 }
 
-export function decodeMessage(cipherText: string, friendCode: string): string {
-  const key = deriveKeyFromFriendCode(friendCode);
+export function decodeMessage(
+  cipherText: string,
+  myFriendCode: string,
+  theirFriendCode: string,
+): string {
+  const key = deriveKeyFromCodes(myFriendCode, theirFriendCode);
   return cipherText
     .split("")
     .map((char) => shiftChar(char, key, "decode"))
