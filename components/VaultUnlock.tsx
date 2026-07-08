@@ -6,12 +6,22 @@ import { TEST_ACCOUNT_PASSWORD } from "@/lib/storage";
 import { Button, Input, Panel } from "./ui";
 
 export function VaultUnlock({ mode }: { mode: "no-vault" | "locked" }) {
-  const { createVault, loadTestAccount, unlock, vault } = useVault();
+  const { createVault, loadTestAccount, unlock, resetVault, vault } = useVault();
   const [alias, setAlias] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function handleForgotPassword() {
+    if (
+      window.confirm(
+        "This will permanently erase this vault, all connections, and message history on this device, so you can start over. Continue?",
+      )
+    ) {
+      resetVault();
+    }
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -129,6 +139,13 @@ export function VaultUnlock({ mode }: { mode: "no-vault" | "locked" }) {
             <Button type="submit" disabled={busy}>
               Unlock Vault
             </Button>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-center text-xs text-foreground/40 underline-offset-2 hover:text-vault-locked hover:underline"
+            >
+              Forgot password? Reset this vault
+            </button>
           </form>
         )}
       </Panel>
