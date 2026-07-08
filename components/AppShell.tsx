@@ -26,7 +26,7 @@ export function AppShell() {
 
   return (
     <div className="relative flex flex-1 flex-col">
-      <MatrixRain className="fixed inset-0 -z-10 opacity-[0.12]" />
+      <MatrixRain className="fixed inset-0 -z-10 opacity-[0.28]" />
 
       <header className="border-b border-vault-steel px-6 py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
