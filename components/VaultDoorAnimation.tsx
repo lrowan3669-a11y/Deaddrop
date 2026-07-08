@@ -6,18 +6,29 @@ import { VaultDoorSvg } from "./VaultDoorSvg";
 
 type Phase = "authenticating" | "granted" | "opening" | "decrypting";
 
+const DECRYPT_CAPTIONS = [
+  "Decrypting Transmission...",
+  "Verifying Cipher Integrity...",
+  "Access Complete",
+];
+
 export function VaultDoorAnimation({ onComplete }: { onComplete: () => void }) {
   const [phase, setPhase] = useState<Phase>("authenticating");
+  const [decryptCaption, setDecryptCaption] = useState(0);
 
   useEffect(() => {
     const toGranted = setTimeout(() => setPhase("granted"), 900);
     const toOpening = setTimeout(() => setPhase("opening"), 1500);
     const toDecrypting = setTimeout(() => setPhase("decrypting"), 2300);
-    const done = setTimeout(() => onComplete(), 3600);
+    const toCaption2 = setTimeout(() => setDecryptCaption(1), 3300);
+    const toCaption3 = setTimeout(() => setDecryptCaption(2), 4300);
+    const done = setTimeout(() => onComplete(), 5300);
     return () => {
       clearTimeout(toGranted);
       clearTimeout(toOpening);
       clearTimeout(toDecrypting);
+      clearTimeout(toCaption2);
+      clearTimeout(toCaption3);
       clearTimeout(done);
     };
   }, [onComplete]);
@@ -27,7 +38,7 @@ export function VaultDoorAnimation({ onComplete }: { onComplete: () => void }) {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-vault-black">
         <MatrixRain className="absolute inset-0 h-full w-full" />
         <p className="relative z-10 animate-pulse text-sm uppercase tracking-[0.4em] text-vault-encoded">
-          Decrypting Transmission...
+          {DECRYPT_CAPTIONS[decryptCaption]}
         </p>
       </div>
     );
