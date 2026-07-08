@@ -5,6 +5,7 @@ import { useVault } from "@/context/VaultContext";
 import { tierConfig } from "@/lib/tiers";
 import { EncodeDecodeWorkspace } from "./EncodeDecodeWorkspace";
 import { FriendManager } from "./FriendManager";
+import { MatrixRain } from "./MatrixRain";
 import { SettingsPanel } from "./SettingsPanel";
 import { Badge } from "./ui";
 
@@ -24,7 +25,9 @@ export function AppShell() {
   const config = tierConfig(vault.tier);
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="relative flex flex-1 flex-col">
+      <MatrixRain className="fixed inset-0 -z-10 opacity-[0.12]" />
+
       <header className="border-b border-vault-steel px-6 py-4">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div>
