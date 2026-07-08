@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --color-vault-black: #0b0b0b;
+  --color-vault-gunmetal: #1a1a1a;
+  --color-vault-steel: #2c2c34;
+  --color-vault-gold: #cba24a;
+  --color-vault-gold-dark: #7a6a36;
+  --color-vault-encoded: #00d084;
+  --color-vault-locked: #ff3b3b;
+
+  --background: var(--color-vault-black);
+  --foreground: #f2e9d8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-vault-black: var(--color-vault-black);
+  --color-vault-gunmetal: var(--color-vault-gunmetal);
+  --color-vault-steel: var(--color-vault-steel);
+  --color-vault-gold: var(--color-vault-gold);
+  --color-vault-gold-dark: var(--color-vault-gold-dark);
+  --color-vault-encoded: var(--color-vault-encoded);
+  --color-vault-locked: var(--color-vault-locked);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--color-vault-steel);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background-image: radial-gradient(
+    circle at 50% 0%,
+    rgba(203, 162, 74, 0.08),
+    transparent 60%
+  );
+}
+
+.vault-panel {
+  background: var(--color-vault-gunmetal);
+  border: 1px solid var(--color-vault-steel);
+}
+
+.vault-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.vault-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-vault-gold-dark);
+  border-radius: 4px;
+}
