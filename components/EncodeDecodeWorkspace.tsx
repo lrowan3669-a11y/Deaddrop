@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { useVault } from "@/context/VaultContext";
 import { formatAsTransmission } from "@/lib/cipher";
 import { tierConfig } from "@/lib/tiers";
-import { Badge, Button, Panel, Textarea } from "./ui";
+import { TerminalButton, TerminalFrame, TerminalTextarea } from "./Terminal";
+import { Badge, Panel } from "./ui";
 
 export function EncodeDecodeWorkspace() {
   const {
@@ -127,101 +128,85 @@ export function EncodeDecodeWorkspace() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel>
-          <h2 className="mb-3 text-sm uppercase tracking-widest text-vault-gold-dark">
-            Encode
-          </h2>
+        <TerminalFrame title="Encode Transmission" footer="Press Encode to transmit">
           <form onSubmit={handleEncode} className="flex flex-col gap-3">
-            <Textarea
+            <TerminalTextarea
               placeholder="Write your message..."
               value={plainText}
               onChange={(e) => setPlainText(e.target.value)}
               rows={4}
             />
-            <Button type="submit" disabled={messagesRemaining === 0}>
+            <TerminalButton type="submit" disabled={messagesRemaining === 0}>
               Encode
-            </Button>
+            </TerminalButton>
           </form>
           {cipherOutput && (
-            <div className="mt-4 rounded-md border border-vault-gold-dark bg-vault-black p-3">
+            <div className="mt-4 border border-vault-encoded/40 bg-black p-3">
               <pre className="vault-scrollbar overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm text-vault-encoded">
                 {formatAsTransmission(cipherOutput)}
               </pre>
-              <Button
-                type="button"
-                variant="secondary"
-                className="mt-3"
-                onClick={handleCopy}
-              >
+              <TerminalButton type="button" className="mt-3" onClick={handleCopy}>
                 {copied ? "Copied" : "Copy & Paste Into Chat"}
-              </Button>
+              </TerminalButton>
             </div>
           )}
-        </Panel>
+        </TerminalFrame>
 
-        <Panel>
-          <h2 className="mb-3 text-sm uppercase tracking-widest text-vault-gold-dark">
-            Decode
-          </h2>
+        <TerminalFrame title="Decode Transmission" footer="Press Decode to reveal">
           <form onSubmit={handleDecode} className="flex flex-col gap-3">
-            <Textarea
+            <TerminalTextarea
               placeholder="Paste the encoded message you received..."
               value={incomingCipher}
               onChange={(e) => setIncomingCipher(e.target.value)}
               rows={4}
             />
-            <Button type="submit">Decode</Button>
+            <TerminalButton type="submit">Decode</TerminalButton>
           </form>
           {decodedText && (
-            <div className="mt-4 rounded-md border border-vault-steel bg-vault-black p-3">
-              <p className="whitespace-pre-wrap text-sm text-foreground">
+            <div className="mt-4 border border-vault-encoded/40 bg-black p-3">
+              <p className="whitespace-pre-wrap font-mono text-sm text-vault-encoded">
                 {decodedText}
               </p>
             </div>
           )}
-        </Panel>
+        </TerminalFrame>
       </div>
 
-      <Panel>
-        <h2 className="text-sm uppercase tracking-widest text-vault-gold-dark">
-          History with {activeFriend?.nickname}
-        </h2>
-        <p className="mb-4 text-xs text-foreground/40">
-          Destroying a message removes it for both sides of the conversation.
-        </p>
+      <TerminalFrame
+        title={`Message Log — ${activeFriend?.nickname ?? ""}`}
+        footer="Destroying a message removes it for both sides"
+      >
         {history.length === 0 ? (
-          <p className="text-sm text-foreground/40">No messages yet.</p>
+          <p className="font-mono text-sm text-vault-encoded/50">
+            No messages yet.
+          </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {history.map((m) => (
-              <li
-                key={m.id}
-                className="rounded-md border border-vault-steel px-4 py-3"
-              >
-                <div className="mb-2 flex items-center justify-between text-xs text-foreground/40">
+              <li key={m.id} className="border border-vault-encoded/30 px-4 py-3">
+                <div className="mb-2 flex items-center justify-between text-xs text-vault-encoded/50">
                   <span>
                     {m.direction === "sent" ? "You sent" : "Received"} ·{" "}
                     {new Date(m.createdAt).toLocaleString()}
                   </span>
-                  <Button variant="danger" onClick={() => handleDestroy(m.id)}>
+                  <TerminalButton onClick={() => handleDestroy(m.id)}>
                     Destroy
-                  </Button>
+                  </TerminalButton>
                 </div>
                 {m.direction === "sent" || revealedId === m.id ? (
-                  <p className="text-sm">{m.plainText}</p>
+                  <p className="font-mono text-sm text-vault-encoded">
+                    {m.plainText}
+                  </p>
                 ) : (
-                  <Button
-                    variant="secondary"
-                    onClick={() => setRevealedId(m.id)}
-                  >
+                  <TerminalButton onClick={() => setRevealedId(m.id)}>
                     Reveal (one read only)
-                  </Button>
+                  </TerminalButton>
                 )}
               </li>
             ))}
           </ul>
         )}
-      </Panel>
+      </TerminalFrame>
     </div>
   );
 }
