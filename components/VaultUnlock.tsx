@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useVault } from "@/context/VaultContext";
 import { Button, Input, Panel } from "./ui";
+import { VaultDoorSvg } from "./VaultDoorSvg";
+import { VaultRoomBackground } from "./VaultRoomBackground";
 
 export function VaultUnlock({ mode }: { mode: "no-vault" | "locked" }) {
   const { createVault, loadTestAccount, unlock, resetVault, vault } = useVault();
@@ -30,7 +32,11 @@ export function VaultUnlock({ mode }: { mode: "no-vault" | "locked" }) {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-4">
+    <div className="relative flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12">
+      <VaultRoomBackground />
+
+      <VaultDoorSvg className="h-48 w-48 drop-shadow-[0_0_45px_rgba(203,162,74,0.2)] sm:h-64 sm:w-64" />
+
       <Panel className="w-full max-w-md">
         <div className="mb-6 text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-vault-gold-dark">
