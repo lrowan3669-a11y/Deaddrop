@@ -13,13 +13,11 @@ import {
   getDailyUsage,
   getFriends,
   getMessages,
-  hashPassword,
   incrementDailyUsage,
   saveFriends,
   saveMessages,
   saveVault,
   seedTestAccount,
-  verifyPassword,
 } from "@/lib/storage";
 import { DEFAULT_SKIN_ID, getVaultSkin, isSkinUnlockedForTier } from "@/lib/theme-presets";
 import { tierConfig } from "@/lib/tiers";
@@ -41,9 +39,9 @@ interface VaultContextValue {
   messagesRemaining: number | "unlimited";
   friendSlotsRemaining: number | "unlimited";
 
-  createVault: (alias: string, password: string) => Promise<void>;
-  loadTestAccount: () => Promise<void>;
-  unlock: (password: string) => Promise<boolean>;
+  createVault: (alias: string) => void;
+  loadTestAccount: () => void;
+  unlock: () => void;
   completeUnlock: () => void;
   lock: () => void;
   resetVault: () => void;
@@ -73,10 +71,9 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const session = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const { status, vault, friends, messages, dailyUsage } = session;
 
-  const createVault = useCallback(async (alias: string, password: string) => {
+  const createVault = useCallback((alias: string) => {
     const newVault: Vault = {
       alias,
-      passwordHash: await hashPassword(password),
       tier: "free",
       theme: "classified",
       friendCode: generateFriendCode(),
@@ -96,8 +93,8 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
-  const loadTestAccount = useCallback(async () => {
-    const seeded = await seedTestAccount();
+  const loadTestAccount = useCallback(() => {
+    const seeded = seedTestAccount();
     updateSession(() => ({
       status: "unlocking",
       vault: seeded,
@@ -107,23 +104,16 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
-  const unlock = useCallback(
-    async (password: string) => {
-      if (!vault) return false;
-      const ok = await verifyPassword(password, vault.passwordHash);
-      if (ok) {
-        updateSession((s) => ({
-          ...s,
-          status: "unlocking",
-          friends: getFriends(),
-          messages: getMessages(),
-          dailyUsage: getDailyUsage(),
-        }));
-      }
-      return ok;
-    },
-    [vault],
-  );
+  const unlock = useCallback(() => {
+    if (!vault) return;
+    updateSession((s) => ({
+      ...s,
+      status: "unlocking",
+      friends: getFriends(),
+      messages: getMessages(),
+      dailyUsage: getDailyUsage(),
+    }));
+  }, [vault]);
 
   const completeUnlock = useCallback(() => {
     updateSession((s) => ({ ...s, status: "unlocked" }));

@@ -16,16 +16,19 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). On first load you can
-either create a new vault (alias + password) or click **Load Test Account
-(Beta)** to jump straight into a seeded account (password `0000`) with demo
-connections already in place. Either path plays the vault door unlock
-animation before dropping you into the encode/decode workspace.
+either create a new vault (just pick an alias) or click **Load Test Account
+(Beta)** to jump straight into a seeded account with demo connections
+already in place. Either path plays the vault door unlock animation before
+dropping you into the encode/decode workspace.
+
+> Password protection is intentionally switched off for this beta (it'll
+> come back later) — opening or re-opening a vault is just one click.
 
 ## How it works
 
-- **Vault** — a local password-protected profile (alias, tier, theme,
-  friend code). Stored hashed in `localStorage`. Unlocking (or creating a
-  vault, or loading the test account) plays a vault-door animation
+- **Vault** — a local profile (alias, tier, theme, friend code) stored in
+  `localStorage`. Opening it (creating a vault, re-opening a locked one, or
+  loading the test account) plays a vault-door animation
   (`components/VaultDoorAnimation.tsx`) before granting access.
 - **Friend code** — a shareable code like `RAVEN-4821`. Both sides enter the
   same code, and DeadDrop deterministically derives an affine cipher

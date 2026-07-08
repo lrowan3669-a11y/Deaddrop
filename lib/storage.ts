@@ -9,7 +9,6 @@ const KEYS = {
 } as const;
 
 export const TEST_ACCOUNT_ALIAS = "Agent Zero";
-export const TEST_ACCOUNT_PASSWORD = "0000";
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -29,21 +28,6 @@ function read<T>(key: string): T | null {
 function write<T>(key: string, value: T): void {
   if (!isBrowser()) return;
   window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  const data = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-export async function verifyPassword(
-  password: string,
-  hash: string,
-): Promise<boolean> {
-  return (await hashPassword(password)) === hash;
 }
 
 export function getVault(): Vault | null {
@@ -99,10 +83,9 @@ export function incrementDailyUsage(): DailyUsage {
   return next;
 }
 
-export async function seedTestAccount(): Promise<Vault> {
+export function seedTestAccount(): Vault {
   const vault: Vault = {
     alias: TEST_ACCOUNT_ALIAS,
-    passwordHash: await hashPassword(TEST_ACCOUNT_PASSWORD),
     tier: "secret",
     theme: "classified",
     friendCode: generateFriendCode(),

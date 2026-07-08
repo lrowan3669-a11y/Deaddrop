@@ -9,7 +9,6 @@ export interface Friend {
 
 export interface Vault {
   alias: string;
-  passwordHash: string;
   tier: Tier;
   theme: string;
   friendCode: string;
