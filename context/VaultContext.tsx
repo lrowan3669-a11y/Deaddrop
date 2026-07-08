@@ -21,8 +21,9 @@ import {
   seedTestAccount,
   verifyPassword,
 } from "@/lib/storage";
+import { DEFAULT_SKIN_ID, getVaultSkin, isSkinUnlockedForTier } from "@/lib/theme-presets";
 import { tierConfig } from "@/lib/tiers";
-import type { DecodedMessage, Friend, ThemeId, Tier, Vault } from "@/lib/types";
+import type { DecodedMessage, Friend, Tier, Vault } from "@/lib/types";
 import {
   EMPTY_USAGE,
   getServerSnapshot,
@@ -43,6 +44,7 @@ interface VaultContextValue {
   createVault: (alias: string, password: string) => Promise<void>;
   loadTestAccount: () => Promise<void>;
   unlock: (password: string) => Promise<boolean>;
+  completeUnlock: () => void;
   lock: () => void;
   resetVault: () => void;
 
@@ -60,7 +62,7 @@ interface VaultContextValue {
   dismissMessage: (id: string) => void;
 
   setTier: (tier: Tier) => void;
-  setTheme: (theme: ThemeId) => void;
+  setTheme: (theme: string) => void;
   setBioEncodingEnabled: (enabled: boolean) => void;
   updateAlias: (alias: string) => void;
 }
@@ -86,7 +88,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     saveFriends([]);
     saveMessages([]);
     updateSession(() => ({
-      status: "unlocked",
+      status: "unlocking",
       vault: newVault,
       friends: [],
       messages: [],
@@ -97,7 +99,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const loadTestAccount = useCallback(async () => {
     const seeded = await seedTestAccount();
     updateSession(() => ({
-      status: "unlocked",
+      status: "unlocking",
       vault: seeded,
       friends: getFriends(),
       messages: getMessages(),
@@ -112,7 +114,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       if (ok) {
         updateSession((s) => ({
           ...s,
-          status: "unlocked",
+          status: "unlocking",
           friends: getFriends(),
           messages: getMessages(),
           dailyUsage: getDailyUsage(),
@@ -122,6 +124,10 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     },
     [vault],
   );
+
+  const completeUnlock = useCallback(() => {
+    updateSession((s) => ({ ...s, status: "unlocked" }));
+  }, []);
 
   const lock = useCallback(() => {
     updateSession((s) => ({ ...s, status: "locked" }));
@@ -243,7 +249,15 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
 
   const dismissMessage = useCallback(
     (id: string) => {
-      const next = messages.filter((m) => m.id !== id);
+      // Destroying a message removes both the sent and received copy of it
+      // from this conversation's history, simulating a shared self-destruct.
+      const target = messages.find((m) => m.id === id);
+      const next = target
+        ? messages.filter(
+            (m) =>
+              !(m.friendId === target.friendId && m.cipherText === target.cipherText),
+          )
+        : messages;
       saveMessages(next);
       updateSession((s) => ({ ...s, messages: next }));
     },
@@ -253,20 +267,20 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const setTier = useCallback(
     (tier: Tier) => {
       if (!vault) return;
-      const config = tierConfig(tier);
-      const nextTheme = config.unlockedThemes.includes(vault.theme)
+      const currentSkin = getVaultSkin(vault.theme);
+      const nextTheme = isSkinUnlockedForTier(currentSkin, tier)
         ? vault.theme
-        : "classified";
+        : DEFAULT_SKIN_ID;
       persistVault({ ...vault, tier, theme: nextTheme });
     },
     [vault, persistVault],
   );
 
   const setTheme = useCallback(
-    (theme: ThemeId) => {
+    (theme: string) => {
       if (!vault) return;
-      const config = tierConfig(vault.tier);
-      if (!config.unlockedThemes.includes(theme)) return;
+      const skin = getVaultSkin(theme);
+      if (!isSkinUnlockedForTier(skin, vault.tier)) return;
       persistVault({ ...vault, theme });
     },
     [vault, persistVault],
@@ -313,6 +327,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     createVault,
     loadTestAccount,
     unlock,
+    completeUnlock,
     lock,
     resetVault,
     addFriend,

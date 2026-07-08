@@ -183,9 +183,12 @@ export function EncodeDecodeWorkspace() {
       </div>
 
       <Panel>
-        <h2 className="mb-4 text-sm uppercase tracking-widest text-vault-gold-dark">
+        <h2 className="text-sm uppercase tracking-widest text-vault-gold-dark">
           History with {activeFriend?.nickname}
         </h2>
+        <p className="mb-4 text-xs text-foreground/40">
+          Destroying a message removes it for both sides of the conversation.
+        </p>
         {history.length === 0 ? (
           <p className="text-sm text-foreground/40">No messages yet.</p>
         ) : (

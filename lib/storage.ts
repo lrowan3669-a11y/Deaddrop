@@ -9,7 +9,7 @@ const KEYS = {
 } as const;
 
 export const TEST_ACCOUNT_ALIAS = "Agent Zero";
-export const TEST_ACCOUNT_PASSWORD = "deaddrop";
+export const TEST_ACCOUNT_PASSWORD = "0000";
 
 function isBrowser() {
   return typeof window !== "undefined";

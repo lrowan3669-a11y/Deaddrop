@@ -54,3 +54,22 @@ body {
   background: var(--color-vault-gold-dark);
   border-radius: 4px;
 }
+
+@keyframes vault-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vault-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 40px 0 rgba(203, 162, 74, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 70px 10px rgba(203, 162, 74, 0.4);
+  }
+}

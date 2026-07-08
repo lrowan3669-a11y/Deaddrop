@@ -1,7 +1,7 @@
 import { getDailyUsage, getFriends, getMessages, getVault } from "./storage";
 import type { DailyUsage, DecodedMessage, Friend, Vault } from "./types";
 
-export type Status = "loading" | "no-vault" | "locked" | "unlocked";
+export type Status = "loading" | "no-vault" | "locked" | "unlocking" | "unlocked";
 
 export interface Session {
   status: Status;

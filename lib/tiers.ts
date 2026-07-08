@@ -1,4 +1,4 @@
-import type { Tier, ThemeId } from "./types";
+import type { Tier } from "./types";
 
 export interface TierConfig {
   id: Tier;
@@ -6,7 +6,6 @@ export interface TierConfig {
   priceLabel: string;
   maxFriends: number | "unlimited";
   maxMessagesPerDay: number | "unlimited";
-  unlockedThemes: ThemeId[];
   cipherTypes: Array<"affine" | "cascade">;
   futureChat: boolean;
   bioEncoding: boolean;
@@ -20,7 +19,6 @@ export const TIERS: Record<Tier, TierConfig> = {
     priceLabel: "Free",
     maxFriends: 3,
     maxMessagesPerDay: 5,
-    unlockedThemes: ["classified"],
     cipherTypes: ["affine"],
     futureChat: false,
     bioEncoding: false,
@@ -32,7 +30,6 @@ export const TIERS: Record<Tier, TierConfig> = {
     priceLabel: "£1.99 / month",
     maxFriends: "unlimited",
     maxMessagesPerDay: 30,
-    unlockedThemes: ["classified", "custom"],
     cipherTypes: ["affine"],
     futureChat: false,
     bioEncoding: false,
@@ -48,7 +45,6 @@ export const TIERS: Record<Tier, TierConfig> = {
     priceLabel: "£5.99 / month",
     maxFriends: "unlimited",
     maxMessagesPerDay: "unlimited",
-    unlockedThemes: ["classified", "custom", "military"],
     cipherTypes: ["affine", "cascade"],
     futureChat: true,
     bioEncoding: true,

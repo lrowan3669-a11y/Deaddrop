@@ -1,7 +1,5 @@
 export type Tier = "free" | "agent" | "secret";
 
-export type ThemeId = "classified" | "custom" | "military";
-
 export interface Friend {
   id: string;
   nickname: string;
@@ -13,7 +11,7 @@ export interface Vault {
   alias: string;
   passwordHash: string;
   tier: Tier;
-  theme: ThemeId;
+  theme: string;
   friendCode: string;
   cipherType: "affine" | "cascade";
   bioEncodingEnabled: boolean;

@@ -2,15 +2,11 @@
 
 import { useState } from "react";
 import { useVault } from "@/context/VaultContext";
+import { isSkinUnlockedForTier, VAULT_SKINS, type VaultSkin } from "@/lib/theme-presets";
 import { TIER_ORDER, tierConfig } from "@/lib/tiers";
-import type { ThemeId } from "@/lib/types";
 import { Badge, Button, Input, Panel } from "./ui";
 
-const THEME_LABELS: Record<ThemeId, string> = {
-  classified: "Classified (Basic)",
-  custom: "Custom Vault",
-  military: "Military Grade",
-};
+const SKIN_GROUPS: VaultSkin["group"][] = ["Basic", "Custom", "Military Grade"];
 
 export function SettingsPanel() {
   const {
@@ -114,26 +110,66 @@ export function SettingsPanel() {
       </Panel>
 
       <Panel>
-        <h2 className="mb-4 text-sm uppercase tracking-widest text-vault-gold-dark">
+        <h2 className="mb-1 text-sm uppercase tracking-widest text-vault-gold-dark">
           Vault Theme
         </h2>
-        <div className="flex flex-wrap gap-3">
-          {(Object.keys(THEME_LABELS) as ThemeId[]).map((themeId) => {
-            const unlocked = config.unlockedThemes.includes(themeId);
-            const active = vault.theme === themeId;
-            return (
-              <Button
-                key={themeId}
-                variant={active ? "primary" : "secondary"}
-                disabled={!unlocked}
-                onClick={() => setTheme(themeId)}
-                title={unlocked ? undefined : "Upgrade to unlock this theme"}
-              >
-                {THEME_LABELS[themeId]}
-                {!unlocked && " 🔒"}
-              </Button>
-            );
-          })}
+        <p className="mb-4 text-xs text-foreground/50">
+          Pick a colour palette and vault design. Higher tiers unlock more
+          styles.
+        </p>
+        <div className="flex flex-col gap-5">
+          {SKIN_GROUPS.map((group) => (
+            <div key={group}>
+              <p className="mb-2 text-xs uppercase tracking-widest text-foreground/40">
+                {group}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {VAULT_SKINS.filter((skin) => skin.group === group).map(
+                  (skin) => {
+                    const unlocked = isSkinUnlockedForTier(skin, vault.tier);
+                    const active = vault.theme === skin.id;
+                    return (
+                      <button
+                        key={skin.id}
+                        type="button"
+                        disabled={!unlocked}
+                        onClick={() => setTheme(skin.id)}
+                        title={
+                          unlocked
+                            ? undefined
+                            : "Upgrade to unlock this vault design"
+                        }
+                        className={`flex items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          active
+                            ? "border-vault-gold bg-vault-gold/10"
+                            : "border-vault-steel hover:border-vault-gold-dark"
+                        }`}
+                      >
+                        <span className="flex overflow-hidden rounded-full border border-vault-steel">
+                          <span
+                            className="h-5 w-5"
+                            style={{ backgroundColor: skin.colors.background }}
+                          />
+                          <span
+                            className="h-5 w-5"
+                            style={{ backgroundColor: skin.colors.gold }}
+                          />
+                          <span
+                            className="h-5 w-5"
+                            style={{ backgroundColor: skin.colors.steel }}
+                          />
+                        </span>
+                        <span>
+                          {skin.label}
+                          {!unlocked && " 🔒"}
+                        </span>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </Panel>
 
