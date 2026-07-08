@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --color-vault-black: #0b0b0b;
-  --color-vault-gunmetal: #1a1a1a;
-  --color-vault-steel: #2c2c34;
-  --color-vault-gold: #cba24a;
-  --color-vault-gold-dark: #7a6a36;
-  --color-vault-encoded: #00d084;
+  --color-vault-black: #040805;
+  --color-vault-gunmetal: #0d1a10;
+  --color-vault-steel: #1c3624;
+  --color-vault-gold: #39ff6a;
+  --color-vault-gold-dark: #1f7a3d;
+  --color-vault-encoded: #00ffa2;
   --color-vault-locked: #ff3b3b;
 
   --background: var(--color-vault-black);
-  --foreground: #f2e9d8;
+  --foreground: #e6f5ea;
 }
 
 @theme inline {
@@ -37,7 +37,7 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   background-image: radial-gradient(
     circle at 50% 0%,
-    rgba(203, 162, 74, 0.08),
+    rgba(57, 255, 106, 0.08),
     transparent 60%
   );
 }
@@ -67,9 +67,9 @@ body {
 @keyframes vault-pulse {
   0%,
   100% {
-    box-shadow: 0 0 40px 0 rgba(203, 162, 74, 0.25);
+    box-shadow: 0 0 40px 0 rgba(57, 255, 106, 0.25);
   }
   50% {
-    box-shadow: 0 0 70px 10px rgba(203, 162, 74, 0.4);
+    box-shadow: 0 0 70px 10px rgba(57, 255, 106, 0.4);
   }
 }

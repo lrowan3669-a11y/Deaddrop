@@ -24,16 +24,16 @@ export const DEFAULT_SKIN_ID = "classified";
 export const VAULT_SKINS: VaultSkin[] = [
   {
     id: "classified",
-    label: "Classified Gold",
+    label: "Classified",
     group: "Basic",
     minTier: "free",
     colors: {
-      gold: "#cba24a",
-      goldDark: "#7a6a36",
-      gunmetal: "#1a1a1a",
-      steel: "#2c2c34",
-      background: "#0b0b0b",
-      encoded: "#00d084",
+      gold: "#39ff6a",
+      goldDark: "#1f7a3d",
+      gunmetal: "#0d1a10",
+      steel: "#1c3624",
+      background: "#040805",
+      encoded: "#00ffa2",
       locked: "#ff3b3b",
     },
   },

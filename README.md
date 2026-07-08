@@ -39,10 +39,11 @@ dropping you into the encode/decode workspace.
 - **Destroying a message** removes both the sent and received copy of it
   from the conversation history it's found in — see the caveat below.
 - **Vault themes** (`lib/theme-presets.ts`) — real colour/style presets
-  applied live via CSS variables, gated by tier: Free Agent is stuck with
-  Classified Gold, Agent unlocks custom colour palettes (Sapphire, Emerald,
-  Crimson), Secret Agent additionally unlocks military-grade designs
-  (Desert Ops, Night Ops, Onyx Steel).
+  applied live via CSS variables, gated by tier: Free Agent gets the default
+  Classified digital-green look (matching the DeadDrop logo), Agent unlocks
+  custom colour palettes (Sapphire, Emerald, Crimson), Secret Agent
+  additionally unlocks military-grade designs (Desert Ops, Night Ops, Onyx
+  Steel).
 - **Tiers** — enforced client-side for now (`lib/tiers.ts`), switchable
   from Settings for beta testing:
   - **Free Agent** — up to 3 friends, 5 messages/day, basic vault theme.

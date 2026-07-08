@@ -17,7 +17,7 @@ export function MatrixRain({ className = "" }: { className?: string }) {
     const accent =
       getComputedStyle(document.documentElement)
         .getPropertyValue("--color-vault-encoded")
-        .trim() || "#00d084";
+        .trim() || "#00ffa2";
 
     let columns = 0;
     let drops: number[] = [];
