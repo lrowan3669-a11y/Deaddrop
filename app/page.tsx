@@ -19,7 +19,7 @@ export default function Home() {
         </p>
       </div>
     );
-  } else if (status === "no-vault" || status === "locked") {
+  } else if (status === "signed-out" || status === "locked") {
     content = <VaultUnlock mode={status} />;
   } else if (status === "unlocking") {
     content = <VaultDoorAnimation onComplete={completeUnlock} />;

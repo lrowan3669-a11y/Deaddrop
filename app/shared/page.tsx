@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PENDING_DECODE_KEY } from "@/lib/storage";
+import { setPendingSharedText } from "@/lib/pending-share";
 
 export default function SharedPage() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function SharedPage() {
     const params = new URLSearchParams(window.location.search);
     const text = params.get("text") || params.get("url") || "";
     if (text) {
-      window.localStorage.setItem(PENDING_DECODE_KEY, text);
+      setPendingSharedText(text);
     }
     router.replace("/");
   }, [router]);

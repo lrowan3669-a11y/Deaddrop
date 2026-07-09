@@ -34,8 +34,15 @@ create table if not exists public.profiles (
   friend_code text not null unique,
   cipher_type text not null default 'affine' check (cipher_type in ('affine', 'cascade')),
   bio_encoding_enabled boolean not null default false,
+  pin_hash text,
+  pin_attempts int not null default 0,
+  pin_locked_until timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists pin_hash text;
+alter table public.profiles add column if not exists pin_attempts int not null default 0;
+alter table public.profiles add column if not exists pin_locked_until timestamptz;
 
 alter table public.profiles enable row level security;
 
@@ -57,6 +64,97 @@ create policy "profiles_update_own"
   on public.profiles for update
   using (auth.uid() = id)
   with check (auth.uid() = id);
+
+-- Lets a user wipe their own DeadDrop data ("Delete Vault"). This removes
+-- the profile row (and, via cascade, their connections and messages) but
+-- NOT the underlying auth.users row - deleting the auth account itself
+-- requires a service-role server call, which is a separate piece of work.
+drop policy if exists "profiles_delete_own" on public.profiles;
+create policy "profiles_delete_own"
+  on public.profiles for delete
+  using (auth.uid() = id);
+
+-- Sets (or replaces) the caller's vault PIN. The raw PIN is only ever
+-- hashed (bcrypt via pgcrypto) and never stored or returned in plain form.
+create or replace function public.set_pin(new_pin text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+  if new_pin !~ '^[0-9]{4,6}$' then
+    raise exception 'PIN must be 4-6 digits';
+  end if;
+
+  update public.profiles
+  set pin_hash = crypt(new_pin, gen_salt('bf')),
+      pin_attempts = 0,
+      pin_locked_until = null
+  where id = auth.uid();
+end;
+$$;
+
+grant execute on function public.set_pin(text) to authenticated;
+
+-- Verifies the caller's vault PIN server-side (the hash never leaves the
+-- database). Locks out further attempts for 5 minutes after 5 consecutive
+-- failures, resetting the counter on success or once locked.
+create or replace function public.verify_pin(pin text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  row_pin_hash text;
+  row_locked_until timestamptz;
+  row_attempts int;
+  ok boolean;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select pin_hash, pin_locked_until, pin_attempts
+    into row_pin_hash, row_locked_until, row_attempts
+  from public.profiles
+  where id = auth.uid();
+
+  if row_locked_until is not null and row_locked_until > now() then
+    raise exception 'Too many attempts. Try again in a few minutes.';
+  end if;
+
+  if row_pin_hash is null then
+    raise exception 'No PIN set for this vault';
+  end if;
+
+  ok := (row_pin_hash = crypt(pin, row_pin_hash));
+
+  if ok then
+    update public.profiles
+    set pin_attempts = 0, pin_locked_until = null
+    where id = auth.uid();
+  else
+    if row_attempts + 1 >= 5 then
+      update public.profiles
+      set pin_attempts = 0, pin_locked_until = now() + interval '5 minutes'
+      where id = auth.uid();
+    else
+      update public.profiles
+      set pin_attempts = row_attempts + 1
+      where id = auth.uid();
+    end if;
+  end if;
+
+  return ok;
+end;
+$$;
+
+grant execute on function public.verify_pin(text) to authenticated;
 
 -- Look up a user id by friend code without exposing the rest of their
 -- profile (alias, tier, etc). Used by the "Add Connection" flow.
@@ -156,19 +254,56 @@ $$;
 
 grant execute on function public.add_connection(text, text) to authenticated;
 
+-- Lists the caller's connections with the counterpart's alias and friend
+-- code resolved server-side (there is no broad SELECT policy on profiles
+-- that would let the client join to them directly).
+create or replace function public.list_connections()
+returns table (
+  connection_id uuid,
+  counterpart_id uuid,
+  counterpart_alias text,
+  counterpart_friend_code text,
+  my_nickname text,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    c.id as connection_id,
+    case when c.user_a = auth.uid() then c.user_b else c.user_a end as counterpart_id,
+    p.alias as counterpart_alias,
+    p.friend_code as counterpart_friend_code,
+    case when c.user_a = auth.uid() then c.nickname_a else c.nickname_b end as my_nickname,
+    c.created_at
+  from public.connections c
+  join public.profiles p
+    on p.id = (case when c.user_a = auth.uid() then c.user_b else c.user_a end)
+  where auth.uid() in (c.user_a, c.user_b)
+  order by c.created_at desc;
+$$;
+
+grant execute on function public.list_connections() to authenticated;
+
 -- ============================================================
 -- messages (one shared row per message)
 -- ============================================================
 
+-- Only ciphertext is ever stored - plaintext is decoded client-side on
+-- demand from the connection's shared key, so a database read (or leak)
+-- never exposes message contents in the clear.
 create table if not exists public.messages (
   id uuid primary key default gen_random_uuid(),
   connection_id uuid not null references public.connections (id) on delete cascade,
   sender_id uuid not null references auth.users (id) on delete cascade,
-  plain_text text not null,
   cipher_text text not null,
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
+
+alter table public.messages drop column if exists plain_text;
 
 create index if not exists messages_connection_created_idx
   on public.messages (connection_id, created_at desc);

@@ -1,13 +1,7 @@
 export type Tier = "free" | "agent" | "secret";
 
-export interface Friend {
-  id: string;
-  nickname: string;
-  friendCode: string;
-  createdAt: number;
-}
-
 export interface Vault {
+  id: string;
   alias: string;
   tier: Tier;
   theme: string;
@@ -17,17 +11,19 @@ export interface Vault {
   createdAt: number;
 }
 
-export interface DecodedMessage {
+export interface Connection {
   id: string;
-  friendId: string;
-  direction: "sent" | "received";
-  plainText: string;
-  cipherText: string;
+  nickname: string;
+  counterpartAlias: string;
+  friendCode: string;
   createdAt: number;
-  read: boolean;
 }
 
-export interface DailyUsage {
-  date: string;
-  count: number;
+export interface Message {
+  id: string;
+  connectionId: string;
+  senderId: string;
+  cipherText: string;
+  createdAt: number;
+  readAt: number | null;
 }

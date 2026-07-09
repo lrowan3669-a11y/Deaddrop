@@ -17,6 +17,7 @@ export function SettingsPanel() {
     updateAlias,
     resetVault,
     lock,
+    logOut,
   } = useVault();
   const [alias, setAlias] = useState(vault?.alias ?? "");
   const [bioBusy, setBioBusy] = useState(false);
@@ -184,7 +185,7 @@ export function SettingsPanel() {
         </div>
         <p className="mb-3 text-sm text-foreground/60">
           Use your device&apos;s biometric sensor as an extra layer on top of
-          your vault password.
+          your vault PIN.
         </p>
         <Button
           variant="secondary"
@@ -219,12 +220,15 @@ export function SettingsPanel() {
           <Button variant="secondary" onClick={lock}>
             Lock Vault
           </Button>
+          <Button variant="secondary" onClick={() => logOut()}>
+            Log Out
+          </Button>
           <Button
             variant="danger"
             onClick={() => {
               if (
                 window.confirm(
-                  "This will permanently erase this vault, all connections, and message history on this device. Continue?",
+                  "This will permanently erase your alias, connections, and message history. Your login (email/password) will still exist, but you'll need to sign up again to use DeadDrop. Continue?",
                 )
               ) {
                 resetVault();

@@ -3,17 +3,10 @@
 import { useMemo, useState } from "react";
 import { useVault } from "@/context/VaultContext";
 import { formatAsTransmission } from "@/lib/cipher";
-import { PENDING_DECODE_KEY } from "@/lib/storage";
+import { takePendingSharedText } from "@/lib/pending-share";
 import { tierConfig } from "@/lib/tiers";
 import { TerminalButton, TerminalFrame, TerminalTextarea } from "./Terminal";
 import { Badge, Panel } from "./ui";
-
-function readPendingSharedText(): string {
-  if (typeof window === "undefined") return "";
-  const pending = window.localStorage.getItem(PENDING_DECODE_KEY);
-  if (pending) window.localStorage.removeItem(PENDING_DECODE_KEY);
-  return pending ?? "";
-}
 
 export function EncodeDecodeWorkspace() {
   const {
@@ -29,21 +22,22 @@ export function EncodeDecodeWorkspace() {
   const [friendId, setFriendId] = useState(friends[0]?.id ?? "");
   const [plainText, setPlainText] = useState("");
   const [cipherOutput, setCipherOutput] = useState("");
-  const [incomingCipher, setIncomingCipher] = useState(readPendingSharedText);
+  const [incomingCipher, setIncomingCipher] = useState(takePendingSharedText);
   const [decodedText, setDecodedText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [revealedId, setRevealedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const config = vault ? tierConfig(vault.tier) : null;
   const activeFriend = friends.find((f) => f.id === friendId);
 
   const history = useMemo(
-    () => messages.filter((m) => m.friendId === friendId),
+    () => messages.filter((m) => m.connectionId === friendId),
     [messages, friendId],
   );
 
-  function handleEncode(e: React.FormEvent) {
+  async function handleEncode(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!friendId) {
@@ -51,7 +45,9 @@ export function EncodeDecodeWorkspace() {
       return;
     }
     if (!plainText.trim()) return;
-    const result = sendEncoded(friendId, plainText);
+    setBusy(true);
+    const result = await sendEncoded(friendId, plainText);
+    setBusy(false);
     if (!result.ok) {
       setError(result.error ?? "Could not encode message.");
       return;
@@ -98,9 +94,14 @@ export function EncodeDecodeWorkspace() {
     }
   }
 
-  function handleDestroy(id: string) {
-    dismissMessage(id);
+  async function handleDestroy(id: string) {
+    await dismissMessage(id);
     if (revealedId === id) setRevealedId(null);
+  }
+
+  function plainTextFor(connectionId: string, cipherText: string): string {
+    const result = decodeIncoming(connectionId, cipherText);
+    return result.plainText ?? "(could not decode)";
   }
 
   if (friends.length === 0) {
@@ -159,7 +160,7 @@ export function EncodeDecodeWorkspace() {
               onChange={(e) => setPlainText(e.target.value)}
               rows={4}
             />
-            <TerminalButton type="submit" disabled={messagesRemaining === 0}>
+            <TerminalButton type="submit" disabled={busy || messagesRemaining === 0}>
               Encode
             </TerminalButton>
           </form>
@@ -210,28 +211,31 @@ export function EncodeDecodeWorkspace() {
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {history.map((m) => (
-              <li key={m.id} className="border border-vault-encoded/30 px-4 py-3">
-                <div className="mb-2 flex items-center justify-between text-xs text-vault-encoded/50">
-                  <span>
-                    {m.direction === "sent" ? "You sent" : "Received"} ·{" "}
-                    {new Date(m.createdAt).toLocaleString()}
-                  </span>
-                  <TerminalButton onClick={() => handleDestroy(m.id)}>
-                    Destroy
-                  </TerminalButton>
-                </div>
-                {m.direction === "sent" || revealedId === m.id ? (
-                  <p className="font-mono text-sm text-vault-encoded">
-                    {m.plainText}
-                  </p>
-                ) : (
-                  <TerminalButton onClick={() => setRevealedId(m.id)}>
-                    Reveal (one read only)
-                  </TerminalButton>
-                )}
-              </li>
-            ))}
+            {history.map((m) => {
+              const sent = m.senderId === vault?.id;
+              return (
+                <li key={m.id} className="border border-vault-encoded/30 px-4 py-3">
+                  <div className="mb-2 flex items-center justify-between text-xs text-vault-encoded/50">
+                    <span>
+                      {sent ? "You sent" : "Received"} ·{" "}
+                      {new Date(m.createdAt).toLocaleString()}
+                    </span>
+                    <TerminalButton onClick={() => handleDestroy(m.id)}>
+                      Destroy
+                    </TerminalButton>
+                  </div>
+                  {sent || revealedId === m.id ? (
+                    <p className="font-mono text-sm text-vault-encoded">
+                      {plainTextFor(m.connectionId, m.cipherText)}
+                    </p>
+                  ) : (
+                    <TerminalButton onClick={() => setRevealedId(m.id)}>
+                      Reveal (one read only)
+                    </TerminalButton>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </TerminalFrame>
