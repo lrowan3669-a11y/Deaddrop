@@ -37,7 +37,7 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   background-image: radial-gradient(
     circle at 50% 0%,
-    rgba(57, 255, 106, 0.08),
+    color-mix(in srgb, var(--color-vault-gold) 8%, transparent),
     transparent 60%
   );
 }
@@ -67,9 +67,9 @@ body {
 @keyframes vault-pulse {
   0%,
   100% {
-    box-shadow: 0 0 40px 0 rgba(57, 255, 106, 0.25);
+    box-shadow: 0 0 40px 0 color-mix(in srgb, var(--color-vault-gold) 25%, transparent);
   }
   50% {
-    box-shadow: 0 0 70px 10px rgba(57, 255, 106, 0.4);
+    box-shadow: 0 0 70px 10px color-mix(in srgb, var(--color-vault-gold) 40%, transparent);
   }
 }

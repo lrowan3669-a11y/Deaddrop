@@ -3,9 +3,17 @@
 import { useMemo, useState } from "react";
 import { useVault } from "@/context/VaultContext";
 import { formatAsTransmission } from "@/lib/cipher";
+import { PENDING_DECODE_KEY } from "@/lib/storage";
 import { tierConfig } from "@/lib/tiers";
 import { TerminalButton, TerminalFrame, TerminalTextarea } from "./Terminal";
 import { Badge, Panel } from "./ui";
+
+function readPendingSharedText(): string {
+  if (typeof window === "undefined") return "";
+  const pending = window.localStorage.getItem(PENDING_DECODE_KEY);
+  if (pending) window.localStorage.removeItem(PENDING_DECODE_KEY);
+  return pending ?? "";
+}
 
 export function EncodeDecodeWorkspace() {
   const {
@@ -21,7 +29,7 @@ export function EncodeDecodeWorkspace() {
   const [friendId, setFriendId] = useState(friends[0]?.id ?? "");
   const [plainText, setPlainText] = useState("");
   const [cipherOutput, setCipherOutput] = useState("");
-  const [incomingCipher, setIncomingCipher] = useState("");
+  const [incomingCipher, setIncomingCipher] = useState(readPendingSharedText);
   const [decodedText, setDecodedText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -73,6 +81,21 @@ export function EncodeDecodeWorkspace() {
     await navigator.clipboard.writeText(cipherOutput);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function handleShare() {
+    if (typeof navigator.share !== "function") {
+      await handleCopy();
+      setError("Sharing isn't supported in this browser — copied instead.");
+      return;
+    }
+    try {
+      await navigator.share({ text: cipherOutput });
+    } catch (err) {
+      if ((err as Error)?.name !== "AbortError") {
+        setError("Could not open the share sheet.");
+      }
+    }
   }
 
   function handleDestroy(id: string) {
@@ -145,9 +168,14 @@ export function EncodeDecodeWorkspace() {
               <pre className="vault-scrollbar overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm text-vault-encoded">
                 {formatAsTransmission(cipherOutput)}
               </pre>
-              <TerminalButton type="button" className="mt-3" onClick={handleCopy}>
-                {copied ? "Copied" : "Copy & Paste Into Chat"}
-              </TerminalButton>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <TerminalButton type="button" onClick={handleCopy}>
+                  {copied ? "Copied" : "Copy"}
+                </TerminalButton>
+                <TerminalButton type="button" onClick={handleShare}>
+                  Share to App
+                </TerminalButton>
+              </div>
             </div>
           )}
         </TerminalFrame>

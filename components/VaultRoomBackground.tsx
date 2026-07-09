@@ -1,9 +1,9 @@
 const CELL = 56;
-const LINE = "rgba(57,255,106,0.06)";
-const DOT = "rgba(57,255,106,0.35)";
+const LINE = "color-mix(in srgb, var(--color-vault-gold) 6%, transparent)";
+const DOT = "color-mix(in srgb, var(--color-vault-gold) 35%, transparent)";
 
 const depositWallStyle: React.CSSProperties = {
-  backgroundColor: "#0a120c",
+  backgroundColor: "var(--color-vault-gunmetal)",
   backgroundImage: `
     repeating-linear-gradient(0deg, ${LINE} 0px, ${LINE} 1px, transparent 1px, transparent ${CELL}px),
     repeating-linear-gradient(90deg, ${LINE} 0px, ${LINE} 1px, transparent 1px, transparent ${CELL}px),
@@ -20,7 +20,10 @@ export function VaultRoomBackground() {
 
       <div
         className="absolute left-1/2 top-1/2 h-[60vh] w-[60vh] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(57,255,106,0.18), transparent 70%)" }}
+        style={{
+          background:
+            "radial-gradient(circle, color-mix(in srgb, var(--color-vault-gold) 18%, transparent), transparent 70%)",
+        }}
       />
 
       <div

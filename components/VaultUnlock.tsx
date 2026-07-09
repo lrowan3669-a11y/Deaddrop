@@ -35,7 +35,7 @@ export function VaultUnlock({ mode }: { mode: "no-vault" | "locked" }) {
     <div className="relative flex flex-1 flex-col items-center justify-center gap-8 px-4 py-12">
       <VaultRoomBackground />
 
-      <VaultDoorSvg className="h-48 w-48 drop-shadow-[0_0_45px_rgba(57,255,106,0.35)] sm:h-64 sm:w-64" />
+      <VaultDoorSvg className="h-48 w-48 drop-shadow-[0_0_45px_color-mix(in_srgb,var(--color-vault-gold)_45%,transparent)] sm:h-64 sm:w-64" />
 
       <Panel className="w-full max-w-md">
         <div className="mb-6 text-center">

@@ -14,9 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DeadDrop — Secure. Private. Unreadable.",
-  description:
-    "DeadDrop is a friendship-code encoder/decoder for turning messages into unreadable ciphertext before you send them anywhere.",
+  title: "Notes",
+  description: "Quick personal notes.",
 };
 
 export default function RootLayout({

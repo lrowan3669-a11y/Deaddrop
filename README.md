@@ -34,8 +34,19 @@ dropping you into the encode/decode workspace.
   same code, and DeadDrop deterministically derives an affine cipher
   (`lib/cipher.ts`) from it — no server round-trip needed.
 - **Encode/Decode** — write a message, encode it with the selected
-  connection's cipher, copy the result into any messaging app. The
-  recipient pastes it back into DeadDrop and decodes it locally.
+  connection's cipher, then **Copy** or **Share to App** (native OS share
+  sheet on mobile — WhatsApp, Messages, etc, where supported; falls back to
+  copy otherwise) it into any messaging app. The recipient pastes it back
+  into DeadDrop and decodes it locally.
+- **Disguised identity** — the browser tab title, favicon, and installed
+  home-screen icon are a deliberately boring cover ("Notes", a plain grey
+  sign-on-a-pole icon in `app/icon.svg`/`app/apple-icon.png`) so the app
+  doesn't announce itself. If installed as a PWA on Android, DeadDrop also
+  registers as a **share target** (`app/manifest.ts` + `app/shared/page.tsx`)
+  - selecting text in another app and sharing it lands directly in the
+  Decode box. This is the closest thing achievable from a web app; a true
+  entry inside another app's own long-press Copy/Select-All menu needs a
+  native iOS/Android app, which is out of scope for a Vercel-deployed site.
 - **Destroying a message** removes both the sent and received copy of it
   from the conversation history it's found in — see the caveat below.
 - **Vault themes** (`lib/theme-presets.ts`) — real colour/style presets
@@ -70,6 +81,12 @@ dropping you into the encode/decode workspace.
 - `context/VaultContext.tsx` — app-wide vault state and actions.
 - `components/` — screens: vault unlock/create, the vault door animation,
   friend exchange, the encode/decode workspace, and settings.
+- `app/manifest.ts` / `app/icon.svg` / `app/apple-icon.png` — disguised
+  cover identity + PWA share-target registration.
+- `app/shared/page.tsx` — receives shared text from the OS share sheet and
+  hands it to the Decode box.
+- `supabase/schema.sql` — Postgres schema for the eventual Supabase backend
+  (not yet wired into the app - see below).
 
 ## Roadmap
 

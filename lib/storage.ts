@@ -6,7 +6,10 @@ const KEYS = {
   friends: "deaddrop_friends",
   messages: "deaddrop_messages",
   usage: "deaddrop_usage",
+  pendingDecode: "deaddrop_pending_decode",
 } as const;
+
+export const PENDING_DECODE_KEY = KEYS.pendingDecode;
 
 export const TEST_ACCOUNT_ALIAS = "Agent Zero";
 
