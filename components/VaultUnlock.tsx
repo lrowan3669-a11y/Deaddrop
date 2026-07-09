@@ -197,6 +197,12 @@ function LockedForm() {
     const result = await verifyPin(pin);
     setBusy(false);
     if (!result.ok) {
+      if (result.error?.toLowerCase().includes("no pin set")) {
+        setShowForgot(true);
+        setNotice("No PIN has been set for this vault yet — set one below to continue.");
+        setPin("");
+        return;
+      }
       setError(result.error ?? "Incorrect PIN.");
       setPin("");
     }
@@ -225,8 +231,8 @@ function LockedForm() {
     return (
       <form onSubmit={handleSetNewPin} className="flex flex-col gap-3">
         <p className="text-center text-xs text-foreground/50">
-          You&apos;re still signed in as {vault?.alias}, so you can set a new PIN
-          directly.
+          {notice ??
+            `You're still signed in as ${vault?.alias}, so you can set a new PIN directly.`}
         </p>
         <label className="flex flex-col gap-1 text-sm">
           New PIN (4-6 digits)
@@ -253,7 +259,10 @@ function LockedForm() {
         </Button>
         <button
           type="button"
-          onClick={() => setShowForgot(false)}
+          onClick={() => {
+            setShowForgot(false);
+            setNotice(null);
+          }}
           className="text-center text-xs text-foreground/40 hover:underline"
         >
           Back
