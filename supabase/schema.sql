@@ -80,7 +80,7 @@ create or replace function public.set_pin(new_pin text)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   if auth.uid() is null then
@@ -107,7 +107,7 @@ create or replace function public.verify_pin(pin text)
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   row_pin_hash text;
