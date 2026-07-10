@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useVault } from "@/context/VaultContext";
+import { hasLocalBiometricCredential, verifyBiometric } from "@/lib/webauthn";
 import { Button, Input, Panel } from "./ui";
 import { VaultDoorSvg } from "./VaultDoorSvg";
 import { VaultRoomBackground } from "./VaultRoomBackground";
@@ -181,7 +182,7 @@ function SignedOutForms() {
 }
 
 function LockedForm() {
-  const { vault, verifyPin, changePin, logOut } = useVault();
+  const { vault, verifyPin, changePin, biometricUnlock, logOut } = useVault();
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -189,6 +190,25 @@ function LockedForm() {
   const [newPin, setNewPin] = useState("");
   const [confirmNewPin, setConfirmNewPin] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [bioBusy, setBioBusy] = useState(false);
+  const bioAvailable = Boolean(
+    vault?.bioEncodingEnabled && vault && hasLocalBiometricCredential(vault.id),
+  );
+
+  async function handleBiometricUnlock() {
+    if (!vault) return;
+    setError(null);
+    setBioBusy(true);
+    const check = await verifyBiometric(vault.id);
+    if (!check.ok) {
+      setBioBusy(false);
+      setError(check.error ?? "Biometric check failed.");
+      return;
+    }
+    const result = await biometricUnlock();
+    setBioBusy(false);
+    if (!result.ok) setError(result.error ?? "Could not unlock vault.");
+  }
 
   async function handleUnlock(e: React.FormEvent) {
     e.preventDefault();
@@ -273,6 +293,16 @@ function LockedForm() {
 
   return (
     <form onSubmit={handleUnlock} className="flex flex-col gap-4">
+      {bioAvailable && (
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={bioBusy}
+          onClick={handleBiometricUnlock}
+        >
+          Unlock with Face ID / Fingerprint
+        </Button>
+      )}
       <label className="flex flex-col gap-1 text-sm">
         Vault PIN
         <Input

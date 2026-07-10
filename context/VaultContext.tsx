@@ -56,6 +56,7 @@ interface VaultContextValue {
   logIn: (email: string, password: string) => Promise<ActionResult>;
   verifyPin: (pin: string) => Promise<ActionResult>;
   changePin: (pin: string) => Promise<ActionResult>;
+  biometricUnlock: () => Promise<ActionResult>;
   completeUnlock: () => void;
   lock: () => void;
   logOut: () => Promise<void>;
@@ -194,6 +195,13 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     if (result.error) return { ok: false, error: result.error };
     return { ok: true };
   }, []);
+
+  const biometricUnlockAction = useCallback(async () => {
+    if (!userId) return { ok: false, error: "Not signed in." };
+    await refreshUnlockedData(userId);
+    setStatus("unlocking");
+    return { ok: true };
+  }, [userId, refreshUnlockedData]);
 
   const completeUnlock = useCallback(() => {
     setStatus("unlocked");
@@ -376,6 +384,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     logIn: logInAction,
     verifyPin: verifyPinAction,
     changePin: changePinAction,
+    biometricUnlock: biometricUnlockAction,
     completeUnlock,
     lock,
     logOut: logOutAction,

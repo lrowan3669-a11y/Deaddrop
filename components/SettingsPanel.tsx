@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useVault } from "@/context/VaultContext";
 import { isSkinUnlockedForTier, VAULT_SKINS, type VaultSkin } from "@/lib/theme-presets";
 import { TIER_ORDER, tierConfig } from "@/lib/tiers";
+import { clearLocalBiometricCredential, registerBiometric } from "@/lib/webauthn";
 import { Badge, Button, Input, Panel } from "./ui";
 
 const SKIN_GROUPS: VaultSkin["group"][] = ["Basic", "Custom", "Military Grade"];
@@ -31,22 +32,20 @@ export function SettingsPanel() {
     setBioBusy(true);
     setBioMessage(null);
     try {
-      if (
-        !vault!.bioEncodingEnabled &&
-        typeof window !== "undefined" &&
-        window.PublicKeyCredential
-      ) {
-        setBioMessage(
-          "Thumbprint recognized. Bio encoding armed for this device.",
-        );
-      } else {
-        setBioMessage(
-          vault!.bioEncodingEnabled
-            ? "Bio encoding disabled."
-            : "Biometric hardware not detected on this device — enabled in software-only mode for testing.",
-        );
+      if (vault!.bioEncodingEnabled) {
+        clearLocalBiometricCredential(vault!.id);
+        setBioEncodingEnabled(false);
+        setBioMessage("Bio encoding disabled on this device.");
+        return;
       }
-      setBioEncodingEnabled(!vault!.bioEncodingEnabled);
+
+      const result = await registerBiometric(vault!.id, vault!.alias);
+      if (!result.ok) {
+        setBioMessage(result.error ?? "Could not register biometric unlock.");
+        return;
+      }
+      setBioEncodingEnabled(true);
+      setBioMessage("Registered. This device's Face ID / Touch ID / fingerprint can now unlock your vault.");
     } finally {
       setBioBusy(false);
     }
@@ -184,8 +183,9 @@ export function SettingsPanel() {
           </Badge>
         </div>
         <p className="mb-3 text-sm text-foreground/60">
-          Use your device&apos;s biometric sensor as an extra layer on top of
-          your vault PIN.
+          Use your device&apos;s Face ID, Touch ID, or fingerprint sensor as
+          an extra layer on top of your vault PIN. Registered per device —
+          you&apos;ll need to enable it again on any other phone or browser.
         </p>
         <Button
           variant="secondary"
