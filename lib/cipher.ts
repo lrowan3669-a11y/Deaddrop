@@ -1,6 +1,3 @@
-const ALPHABET_SIZE = 26;
-const VALID_MULTIPLIERS = [1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25];
-
 const CODE_WORDS = [
   "RAVEN",
   "FALCON",
@@ -20,94 +17,134 @@ const CODE_WORDS = [
   "DRIFTER",
 ];
 
-function hashString(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
-function modInverse(a: number, m: number): number {
-  a = ((a % m) + m) % m;
-  for (let x = 1; x < m; x++) {
-    if ((a * x) % m === 1) return x;
-  }
-  return 1;
-}
-
-export interface CipherKey {
-  a: number;
-  b: number;
-}
-
-/**
- * Derives the shared cipher key from both participants' friend codes.
- * Sorting before combining means it doesn't matter which side is "me" and
- * which is "them" - both people in a connection compute the same key.
- */
-export function deriveKeyFromCodes(codeA: string, codeB: string): CipherKey {
-  const pair = [codeA.trim().toUpperCase(), codeB.trim().toUpperCase()]
-    .sort()
-    .join("|");
-  const hash = hashString(pair);
-  const a = VALID_MULTIPLIERS[hash % VALID_MULTIPLIERS.length];
-  const b = Math.floor(hash / VALID_MULTIPLIERS.length) % ALPHABET_SIZE;
-  return { a, b };
-}
-
 export function generateFriendCode(): string {
   const word = CODE_WORDS[Math.floor(Math.random() * CODE_WORDS.length)];
   const number = Math.floor(1000 + Math.random() * 9000);
   return `${word}-${number}`;
 }
 
-function shiftChar(
-  char: string,
-  key: CipherKey,
-  direction: "encode" | "decode",
-): string {
-  const code = char.charCodeAt(0);
-  const isUpper = code >= 65 && code <= 90;
-  const isLower = code >= 97 && code <= 122;
-  if (!isUpper && !isLower) return char;
+// Real end-to-end encryption: AES-256-GCM with a key derived (PBKDF2-SHA256,
+// 200k iterations) from both friends' codes. A fixed app-wide salt means
+// both sides derive the identical key from the same code pair with nothing
+// new to store or exchange. Everything runs through the browser's native
+// Web Crypto API - no plaintext or keys ever leave the device.
 
-  const base = isUpper ? 65 : 97;
-  const x = code - base;
-  let y: number;
+const PBKDF2_ITERATIONS = 200_000;
+const APP_SALT = "DeadDrop-Vault-Cipher-Salt-v1";
+const IV_BYTES = 12;
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const LETTER_BASE = BigInt(26);
+const BYTE_BASE = BigInt(256);
 
-  if (direction === "encode") {
-    y = (key.a * x + key.b) % ALPHABET_SIZE;
-  } else {
-    const aInverse = modInverse(key.a, ALPHABET_SIZE);
-    y = (aInverse * (x - key.b + ALPHABET_SIZE * ALPHABET_SIZE)) % ALPHABET_SIZE;
-  }
+const keyCache = new Map<string, Promise<CryptoKey>>();
 
-  return String.fromCharCode(base + y);
+function pairKey(codeA: string, codeB: string): string {
+  return [codeA.trim().toUpperCase(), codeB.trim().toUpperCase()].sort().join("|");
 }
 
-export function encodeMessage(
+function deriveAesKey(codeA: string, codeB: string): Promise<CryptoKey> {
+  const pair = pairKey(codeA, codeB);
+  const cached = keyCache.get(pair);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const encoder = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(pair),
+      "PBKDF2",
+      false,
+      ["deriveKey"],
+    );
+    return crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: encoder.encode(APP_SALT),
+        iterations: PBKDF2_ITERATIONS,
+        hash: "SHA-256",
+      },
+      baseKey,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"],
+    );
+  })();
+
+  keyCache.set(pair, promise);
+  return promise;
+}
+
+// Letters-only (base-26) codec for arbitrary bytes - visually matches the
+// app's uppercase cipher-text style with no digits or padding characters.
+// Leading zero bytes are tracked separately (as leading "A"s) since base
+// conversion alone can't distinguish them from a shorter value.
+function bytesToLetters(bytes: Uint8Array): string {
+  let leadingZeros = 0;
+  while (leadingZeros < bytes.length && bytes[leadingZeros] === 0) leadingZeros++;
+
+  let num = BigInt(0);
+  for (const byte of bytes) num = num * BYTE_BASE + BigInt(byte);
+
+  let digits = "";
+  while (num > BigInt(0)) {
+    digits = LETTERS[Number(num % LETTER_BASE)] + digits;
+    num = num / LETTER_BASE;
+  }
+
+  return LETTERS[0].repeat(leadingZeros) + digits;
+}
+
+function lettersToBytes(letters: string): Uint8Array {
+  if (!letters) return new Uint8Array(0);
+
+  let leadingZeros = 0;
+  while (leadingZeros < letters.length && letters[leadingZeros] === LETTERS[0]) leadingZeros++;
+
+  let num = BigInt(0);
+  for (const ch of letters) {
+    const value = LETTERS.indexOf(ch);
+    if (value === -1) throw new Error("Invalid character in cipher text");
+    num = num * LETTER_BASE + BigInt(value);
+  }
+
+  const bytes: number[] = [];
+  while (num > BigInt(0)) {
+    bytes.unshift(Number(num % BYTE_BASE));
+    num = num / BYTE_BASE;
+  }
+
+  return new Uint8Array([...new Array(leadingZeros).fill(0), ...bytes]);
+}
+
+export async function encodeMessage(
   plainText: string,
   myFriendCode: string,
   theirFriendCode: string,
-): string {
-  const key = deriveKeyFromCodes(myFriendCode, theirFriendCode);
-  return plainText
-    .split("")
-    .map((char) => shiftChar(char, key, "encode"))
-    .join("");
+): Promise<string> {
+  const key = await deriveAesKey(myFriendCode, theirFriendCode);
+  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
+  const plainBytes = new TextEncoder().encode(plainText);
+  const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainBytes);
+
+  const combined = new Uint8Array(iv.length + cipherBuf.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(cipherBuf), iv.length);
+  return bytesToLetters(combined);
 }
 
-export function decodeMessage(
+export async function decodeMessage(
   cipherText: string,
   myFriendCode: string,
   theirFriendCode: string,
-): string {
-  const key = deriveKeyFromCodes(myFriendCode, theirFriendCode);
-  return cipherText
-    .split("")
-    .map((char) => shiftChar(char, key, "decode"))
-    .join("");
+): Promise<string> {
+  const key = await deriveAesKey(myFriendCode, theirFriendCode);
+  const combined = lettersToBytes(cipherText.toUpperCase().replace(/[^A-Z]/g, ""));
+  if (combined.length <= IV_BYTES) throw new Error("Cipher text too short");
+
+  const iv = combined.slice(0, IV_BYTES);
+  const data = combined.slice(IV_BYTES);
+  const plainBuf = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+  return new TextDecoder().decode(plainBuf);
 }
 
 export function formatAsTransmission(cipherText: string): string {

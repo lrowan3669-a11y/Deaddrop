@@ -72,7 +72,7 @@ interface VaultContextValue {
   decodeIncoming: (
     connectionId: string,
     cipherText: string,
-  ) => { ok: boolean; plainText?: string; error?: string };
+  ) => Promise<{ ok: boolean; plainText?: string; error?: string }>;
   dismissMessage: (id: string) => Promise<void>;
 
   setTier: (tier: Tier) => void;
@@ -286,7 +286,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
       const friend = friends.find((f) => f.id === connectionId);
       if (!friend) return { ok: false, error: "Unknown connection." };
 
-      const cipherText = encodeMessage(plainText, vault.friendCode, friend.friendCode);
+      const cipherText = await encodeMessage(plainText, vault.friendCode, friend.friendCode);
       const { message, error } = await sendMessage(connectionId, vault.id, cipherText);
       if (error || !message) {
         return { ok: false, error: error ?? "Could not send message." };
@@ -299,12 +299,16 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   );
 
   const decodeIncomingAction = useCallback(
-    (connectionId: string, cipherText: string) => {
+    async (connectionId: string, cipherText: string) => {
       if (!vault) return { ok: false, error: "No vault loaded" };
       const friend = friends.find((f) => f.id === connectionId);
       if (!friend) return { ok: false, error: "Unknown connection." };
-      const plainText = decodeMessage(cipherText, vault.friendCode, friend.friendCode);
-      return { ok: true, plainText };
+      try {
+        const plainText = await decodeMessage(cipherText, vault.friendCode, friend.friendCode);
+        return { ok: true, plainText };
+      } catch {
+        return { ok: false, error: "Could not decode message." };
+      }
     },
     [friends, vault],
   );

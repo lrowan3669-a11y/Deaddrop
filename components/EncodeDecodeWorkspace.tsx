@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useVault } from "@/context/VaultContext";
 import { formatAsTransmission } from "@/lib/cipher";
 import { takePendingSharedText } from "@/lib/pending-share";
@@ -28,6 +28,7 @@ export function EncodeDecodeWorkspace() {
   const [copied, setCopied] = useState(false);
   const [revealedId, setRevealedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [decodedCache, setDecodedCache] = useState<Record<string, string>>({});
 
   const config = vault ? tierConfig(vault.tier) : null;
   const activeFriend = friends.find((f) => f.id === friendId);
@@ -36,6 +37,31 @@ export function EncodeDecodeWorkspace() {
     () => messages.filter((m) => m.connectionId === friendId),
     [messages, friendId],
   );
+
+  useEffect(() => {
+    const pending = history.filter(
+      (m) => (m.senderId === vault?.id || revealedId === m.id) && !(m.id in decodedCache),
+    );
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      pending.map(async (m) => {
+        const result = await decodeIncoming(m.connectionId, m.cipherText);
+        return [m.id, result.ok ? (result.plainText ?? "") : "(could not decode)"] as const;
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      setDecodedCache((prev) => {
+        const next = { ...prev };
+        for (const [id, text] of entries) next[id] = text;
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [history, revealedId, vault?.id, decodeIncoming, decodedCache]);
 
   async function handleEncode(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +82,7 @@ export function EncodeDecodeWorkspace() {
     setPlainText("");
   }
 
-  function handleDecode(e: React.FormEvent) {
+  async function handleDecode(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!friendId) {
@@ -64,7 +90,7 @@ export function EncodeDecodeWorkspace() {
       return;
     }
     if (!incomingCipher.trim()) return;
-    const result = decodeIncoming(friendId, incomingCipher);
+    const result = await decodeIncoming(friendId, incomingCipher);
     if (!result.ok) {
       setError(result.error ?? "Could not decode message.");
       return;
@@ -97,11 +123,6 @@ export function EncodeDecodeWorkspace() {
   async function handleDestroy(id: string) {
     await dismissMessage(id);
     if (revealedId === id) setRevealedId(null);
-  }
-
-  function plainTextFor(connectionId: string, cipherText: string): string {
-    const result = decodeIncoming(connectionId, cipherText);
-    return result.plainText ?? "(could not decode)";
   }
 
   if (friends.length === 0) {
@@ -226,7 +247,7 @@ export function EncodeDecodeWorkspace() {
                   </div>
                   {sent || revealedId === m.id ? (
                     <p className="font-mono text-sm text-vault-encoded">
-                      {plainTextFor(m.connectionId, m.cipherText)}
+                      {decodedCache[m.id] ?? "Decoding..."}
                     </p>
                   ) : (
                     <TerminalButton onClick={() => setRevealedId(m.id)}>
