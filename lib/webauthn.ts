@@ -84,7 +84,8 @@ export async function registerBiometric(
         authenticatorSelection: {
           authenticatorAttachment: "platform",
           userVerification: "required",
-          residentKey: "preferred",
+          residentKey: "discouraged",
+          requireResidentKey: false,
         },
         timeout: 60000,
         attestation: "none",
