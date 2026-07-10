@@ -90,6 +90,15 @@ Open [http://localhost:3000](http://localhost:3000).
   custom colour palettes (Sapphire, Emerald, Crimson), Secret Agent
   additionally unlocks military-grade designs (Desert Ops, Night Ops, Onyx
   Steel).
+- **Bio encoding** (Secret Agent tier) — registers a real WebAuthn platform
+  credential (Face ID/Touch ID/Windows Hello/fingerprint) via
+  `lib/webauthn.ts`. The credential id lives only in this device's
+  localStorage and is never sent to the server, so it's a per-device
+  presence gate layered on top of the vault PIN (the actual, server-verified
+  security boundary) rather than a server-verified passkey - enable it
+  again on each new device/browser. A successful biometric check on the
+  lock screen skips typing the PIN; typing it is always available as a
+  fallback.
 - **Tiers** — enforced via the real message/connection counts now
   (`lib/tiers.ts`), switchable from Settings for beta testing (this will
   eventually gate behind real payment, not a free toggle):
@@ -108,8 +117,6 @@ Open [http://localhost:3000](http://localhost:3000).
   service role key), which isn't built yet. You can still sign up again
   with the same email after deleting your vault, but you'd need to also
   manually remove the auth user from the Supabase dashboard first.
-- **Bio encoding (thumbprint)** in Settings is still a mock - it doesn't
-  perform real WebAuthn yet.
 - No Realtime subscription yet - the message list refetches on unlock and
   after actions, but two people both looking at an open conversation won't
   see each other's messages appear live without navigating away and back.
@@ -120,6 +127,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - `lib/tiers.ts` — tier limits and feature flags.
 - `lib/theme-presets.ts` — vault colour/style presets and tier gating.
 - `lib/pending-share.ts` — bridges the PWA share-target route to the Decode box.
+- `lib/webauthn.ts` — on-device biometric registration/verification (WebAuthn).
 - `lib/supabase/client.ts` — Supabase client singleton (reads env vars).
 - `lib/supabase/queries.ts` — all Supabase reads/writes/RPC calls, with
   every function normalizing network failures into `{ error }`/`{ ok }`
@@ -140,5 +148,4 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Roadmap
 
 Realtime message sync, encrypted live chat, QR dead drops, temporary
-friend codes, image/file encoding, real WebAuthn biometric unlock, and
-full account deletion.
+friend codes, image/file encoding, and full account deletion.
