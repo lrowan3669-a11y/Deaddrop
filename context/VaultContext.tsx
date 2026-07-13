@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { decodeMessage, encodeMessage } from "@/lib/cipher";
+import { containsBannedContent } from "@/lib/content-safety";
 import {
   addConnection,
   countMessagesToday,
@@ -273,6 +274,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   const sendEncodedAction = useCallback(
     async (connectionId: string, plainText: string) => {
       if (!vault) return { ok: false, error: "No vault loaded" };
+      if (containsBannedContent(plainText)) {
+        return {
+          ok: false,
+          error: "This message violates DeadDrop's content policy and cannot be sent.",
+        };
+      }
       const config = tierConfig(vault.tier);
       if (
         config.maxMessagesPerDay !== "unlimited" &&
