@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useVault } from "@/context/VaultContext";
 import { tierConfig } from "@/lib/tiers";
 import { EncodeDecodeWorkspace } from "./EncodeDecodeWorkspace";
@@ -18,8 +18,19 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 export function AppShell() {
-  const { vault } = useVault();
+  const { vault, refreshVault } = useVault();
   const [tab, setTab] = useState<Tab>("workspace");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("billing")) return;
+    refreshVault().then(() => {
+      setTab("settings");
+      params.delete("billing");
+      const query = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
+    });
+  }, [refreshVault]);
 
   if (!vault) return null;
   const config = tierConfig(vault.tier);

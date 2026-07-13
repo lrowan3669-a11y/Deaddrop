@@ -12,20 +12,45 @@ const SKIN_GROUPS: VaultSkin["group"][] = ["Basic", "Custom", "Military Grade"];
 export function SettingsPanel() {
   const {
     vault,
-    setTier,
     setTheme,
     setBioEncodingEnabled,
     updateAlias,
     resetVault,
     lock,
     logOut,
+    upgradeTier,
+    manageSubscription,
   } = useVault();
   const [alias, setAlias] = useState(vault?.alias ?? "");
   const [bioBusy, setBioBusy] = useState(false);
   const [bioMessage, setBioMessage] = useState<string | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   if (!vault) return null;
   const config = tierConfig(vault.tier);
+
+  async function handleUpgrade(tierId: "agent" | "secret") {
+    setBillingError(null);
+    setBillingBusy(true);
+    const result = await upgradeTier(tierId);
+    if (!result.ok) {
+      setBillingBusy(false);
+      setBillingError(result.error ?? "Could not start checkout.");
+    }
+    // On success the browser navigates away to Stripe Checkout, so no need
+    // to clear billingBusy - this component is about to unmount.
+  }
+
+  async function handleManageSubscription() {
+    setBillingError(null);
+    setBillingBusy(true);
+    const result = await manageSubscription();
+    if (!result.ok) {
+      setBillingBusy(false);
+      setBillingError(result.error ?? "Could not open billing portal.");
+    }
+  }
 
   async function handleBioEncoding() {
     if (!config.bioEncoding) return;
@@ -71,8 +96,7 @@ export function SettingsPanel() {
 
       <Panel>
         <h2 className="mb-4 text-sm uppercase tracking-widest text-vault-gold-dark">
-          Subscription Tier{" "}
-          <span className="text-foreground/40">(beta: switch freely)</span>
+          Subscription Tier
         </h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {TIER_ORDER.map((tierId) => {
@@ -96,17 +120,40 @@ export function SettingsPanel() {
                     <li key={f}>{f}</li>
                   ))}
                 </ul>
-                <Button
-                  variant={active ? "secondary" : "primary"}
-                  disabled={active}
-                  onClick={() => setTier(tierId)}
-                >
-                  {active ? "Current Tier" : "Switch"}
-                </Button>
+                {active ? (
+                  <Button variant="secondary" disabled>
+                    Current Tier
+                  </Button>
+                ) : vault.tier === "free" && tierId !== "free" ? (
+                  <Button
+                    disabled={billingBusy}
+                    onClick={() => handleUpgrade(tierId as "agent" | "secret")}
+                  >
+                    Upgrade
+                  </Button>
+                ) : null}
               </div>
             );
           })}
         </div>
+        {vault.tier !== "free" && (
+          <div className="mt-4">
+            <Button
+              variant="secondary"
+              disabled={billingBusy}
+              onClick={handleManageSubscription}
+            >
+              Manage Subscription
+            </Button>
+            <p className="mt-2 text-xs text-foreground/50">
+              Change plans, update payment details, or cancel — handled
+              securely by Stripe.
+            </p>
+          </div>
+        )}
+        {billingError && (
+          <p className="mt-2 text-sm text-vault-locked">{billingError}</p>
+        )}
       </Panel>
 
       <Panel>

@@ -32,7 +32,37 @@ client-side (that's what the anon key is for) - just don't commit
 > email**. If you leave it on, sign-up shows a "check your email" message
 > and the account isn't usable until the user clicks the confirmation link.
 
-### 3. Run locally
+### 3. Set up Stripe (subscriptions)
+
+Tiers are billed via Stripe Checkout + Customer Portal, synced back to
+Supabase by a webhook - card details never touch this app's own code.
+
+1. In the [Stripe dashboard](https://dashboard.stripe.com), make sure
+   **Test mode** is on (top right) while you build - you'll switch to live
+   keys later, same setup, just different keys.
+2. **Product catalog -> Add product** - create "DeadDrop Agent" with a
+   recurring price of £1.99/month, and a second product "DeadDrop Secret
+   Agent" at £5.99/month. Open each product and copy its **Price ID**
+   (starts with `price_...`).
+3. **Developers -> API keys** - copy the **Secret key** (`sk_test_...`).
+   You don't need the publishable key; DeadDrop redirects to Stripe's
+   hosted Checkout/Portal pages instead of using Stripe.js directly.
+4. **Settings -> Billing -> Customer portal** - enable the portal, and
+   under "Products" add both prices so customers can switch between Agent
+   and Secret Agent from the portal (not just cancel).
+5. Fill in `.env.local` (see below) with the secret key and both price
+   IDs, and set `SUPABASE_SERVICE_ROLE_KEY` from your Supabase project's
+   **Settings -> API** page (the `service_role` secret - server-only,
+   never expose this to the browser).
+6. **After you've deployed** (the webhook needs a real HTTPS URL - it
+   won't work against localhost): **Developers -> Webhooks -> Add
+   endpoint**, URL = `https://<your-domain>/api/stripe/webhook`, and
+   subscribe to `checkout.session.completed`,
+   `customer.subscription.updated`, and `customer.subscription.deleted`.
+   Copy the endpoint's **Signing secret** (`whsec_...`) into
+   `STRIPE_WEBHOOK_SECRET` (in Vercel's env vars, then redeploy).
+
+### 4. Run locally
 
 ```bash
 npm install
@@ -99,15 +129,32 @@ Open [http://localhost:3000](http://localhost:3000).
   again on each new device/browser. A successful biometric check on the
   lock screen skips typing the PIN; typing it is always available as a
   fallback.
-- **Tiers** — enforced via the real message/connection counts now
-  (`lib/tiers.ts`), switchable from Settings for beta testing (this will
-  eventually gate behind real payment, not a free toggle):
+- **Tiers** — enforced via the real message/connection counts
+  (`lib/tiers.ts`), and now driven entirely by a real Stripe subscription
+  (there's no free manual switch anymore):
   - **Free Agent** — up to 3 friends, 5 messages/day, basic vault theme.
   - **Agent** (£1.99/mo) — unlimited friends, 30 messages/day, custom vault
     themes.
   - **Secret Agent** (£5.99/mo) — unlimited everything, multiple vault
     designs, military-grade themes, premium cipher functions, bio
     encoding (thumbprint), and the future chat feature flag.
+
+  "Upgrade" in Settings redirects to a Stripe Checkout session
+  (`app/api/stripe/checkout`); once subscribed, "Manage Subscription"
+  redirects to the Stripe Customer Portal (`app/api/stripe/portal`) for
+  switching plans, updating payment details, or cancelling. A webhook
+  (`app/api/stripe/webhook`) is the only thing that ever changes
+  `profiles.tier` - it verifies Stripe's signature, then writes the tier
+  and subscription status via a service-role Supabase client (the only
+  place in the app that uses that key, since Stripe calls this endpoint
+  directly with no user session to authenticate as).
+- **Content safety** — outgoing messages are checked against a banned-term
+  list (`lib/content-safety.ts`, CSAM/child-exploitation terms) before
+  they're ever encrypted or sent; matches are blocked with a themed error
+  and logged as a metadata-only flag (`moderation_flags` table - who and
+  when, never the message) so repeat abuse is visible from the Supabase
+  dashboard. Sign-up requires accepting an Acceptable Use acknowledgement
+  (`profiles.terms_accepted_at`).
 
 ## Known gaps
 
@@ -123,12 +170,23 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Project layout
 
-- `lib/cipher.ts` — friend-code-derived affine cipher (encode/decode).
+- `lib/cipher.ts` — friend-code-derived AES-256-GCM encryption (real
+  end-to-end encryption via the Web Crypto API, not a toy substitution
+  cipher), formatted as an uppercase letters-only "cipher text".
+- `lib/content-safety.ts` — client-side banned-term filter, checked before
+  a message is ever encoded/sent.
 - `lib/tiers.ts` — tier limits and feature flags.
 - `lib/theme-presets.ts` — vault colour/style presets and tier gating.
 - `lib/pending-share.ts` — bridges the PWA share-target route to the Decode box.
 - `lib/webauthn.ts` — on-device biometric registration/verification (WebAuthn).
-- `lib/supabase/client.ts` — Supabase client singleton (reads env vars).
+- `lib/billing.ts` — client-side helpers that call the Stripe API routes
+  with the user's Supabase access token.
+- `lib/stripe/server.ts` — server-only Stripe SDK client + tier/price ID mapping.
+- `lib/supabase/client.ts` — browser Supabase client singleton (reads env vars).
+- `lib/supabase/server.ts` — server-only Supabase clients: one that
+  forwards the caller's own access token (RLS-scoped, used by the
+  checkout/portal routes), and an admin client using the service role key
+  (used only by the webhook, which has no user session).
 - `lib/supabase/queries.ts` — all Supabase reads/writes/RPC calls, with
   every function normalizing network failures into `{ error }`/`{ ok }`
   shapes instead of throwing.
@@ -136,14 +194,21 @@ Open [http://localhost:3000](http://localhost:3000).
 - `components/` — screens: sign-up/login + PIN gate, the vault door
   animation, friend exchange (+ contacts invite), the encode/decode
   workspace, and settings.
+- `app/api/stripe/checkout/route.ts` — creates a Stripe Checkout session
+  for a chosen paid tier.
+- `app/api/stripe/portal/route.ts` — creates a Stripe Customer Portal
+  session for the caller's existing subscription.
+- `app/api/stripe/webhook/route.ts` — verifies Stripe's signature and
+  syncs `profiles.tier`/subscription fields on checkout/subscription events.
 - `app/manifest.ts` / `app/icon.svg` / `app/apple-icon.png` — disguised
   cover identity + PWA share-target registration.
 - `app/shared/page.tsx` — receives shared text from the OS share sheet and
   hands it to the Decode box.
-- `supabase/schema.sql` — the full Postgres schema: `profiles`,
-  `connections` (mutual pairs), `messages` (ciphertext-only, shared rows),
-  RLS policies, and the `add_connection`/`list_connections`/`set_pin`/
-  `verify_pin` RPCs.
+- `supabase/schema.sql` — the full Postgres schema: `profiles` (incl.
+  Stripe/subscription fields), `connections` (mutual pairs), `messages`
+  (ciphertext-only, shared rows), `moderation_flags` (metadata-only abuse
+  signal), RLS policies, and the
+  `add_connection`/`list_connections`/`set_pin`/`verify_pin` RPCs.
 
 ## Roadmap
 

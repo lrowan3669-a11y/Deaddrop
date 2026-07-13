@@ -38,6 +38,9 @@ create table if not exists public.profiles (
   pin_attempts int not null default 0,
   pin_locked_until timestamptz,
   terms_accepted_at timestamptz,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  subscription_status text,
   created_at timestamptz not null default now()
 );
 
@@ -45,6 +48,13 @@ alter table public.profiles add column if not exists pin_hash text;
 alter table public.profiles add column if not exists pin_attempts int not null default 0;
 alter table public.profiles add column if not exists pin_locked_until timestamptz;
 alter table public.profiles add column if not exists terms_accepted_at timestamptz;
+alter table public.profiles add column if not exists stripe_customer_id text;
+alter table public.profiles add column if not exists stripe_subscription_id text;
+alter table public.profiles add column if not exists subscription_status text;
+
+create unique index if not exists profiles_stripe_customer_id_idx
+  on public.profiles (stripe_customer_id)
+  where stripe_customer_id is not null;
 
 alter table public.profiles enable row level security;
 

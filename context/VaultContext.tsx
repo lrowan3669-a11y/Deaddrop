@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { openBillingPortal, startCheckout } from "@/lib/billing";
 import { decodeMessage, encodeMessage } from "@/lib/cipher";
 import { containsBannedContent } from "@/lib/content-safety";
 import {
@@ -33,9 +34,9 @@ import {
   updateProfile,
   verifyPin as verifyPinQuery,
 } from "@/lib/supabase/queries";
-import { DEFAULT_SKIN_ID, getVaultSkin, isSkinUnlockedForTier } from "@/lib/theme-presets";
+import { getVaultSkin, isSkinUnlockedForTier } from "@/lib/theme-presets";
 import { tierConfig } from "@/lib/tiers";
-import type { Connection, Message, Tier, Vault } from "@/lib/types";
+import type { Connection, Message, Vault } from "@/lib/types";
 
 type Status = "loading" | "signed-out" | "locked" | "unlocking" | "unlocked";
 
@@ -78,10 +79,13 @@ interface VaultContextValue {
   ) => Promise<{ ok: boolean; plainText?: string; error?: string }>;
   dismissMessage: (id: string) => Promise<void>;
 
-  setTier: (tier: Tier) => void;
   setTheme: (theme: string) => void;
   setBioEncodingEnabled: (enabled: boolean) => void;
   updateAlias: (alias: string) => void;
+
+  upgradeTier: (tier: "agent" | "secret") => Promise<ActionResult>;
+  manageSubscription: () => Promise<ActionResult>;
+  refreshVault: () => Promise<void>;
 }
 
 const VaultContext = createContext<VaultContextValue | null>(null);
@@ -335,16 +339,25 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     setMessages((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
-  const setTierAction = useCallback(
-    (tier: Tier) => {
-      if (!vault || !userId) return;
-      const currentSkin = getVaultSkin(vault.theme);
-      const nextTheme = isSkinUnlockedForTier(currentSkin, tier) ? vault.theme : DEFAULT_SKIN_ID;
-      persistVault({ tier, theme: nextTheme });
-      updateProfile(userId, { tier, theme: nextTheme }).then(({ error }) => error && console.error(error));
-    },
-    [vault, userId, persistVault],
-  );
+  const upgradeTierAction = useCallback(async (tier: "agent" | "secret") => {
+    const result = await startCheckout(tier);
+    if (!result.url) return { ok: false, error: result.error ?? "Could not start checkout." };
+    window.location.href = result.url;
+    return { ok: true };
+  }, []);
+
+  const manageSubscriptionAction = useCallback(async () => {
+    const result = await openBillingPortal();
+    if (!result.url) return { ok: false, error: result.error ?? "Could not open billing portal." };
+    window.location.href = result.url;
+    return { ok: true };
+  }, []);
+
+  const refreshVaultAction = useCallback(async () => {
+    if (!userId) return;
+    const profile = await fetchProfile(userId);
+    if (profile) setVault(profile);
+  }, [userId]);
 
   const setThemeAction = useCallback(
     (theme: string) => {
@@ -411,10 +424,12 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     sendEncoded: sendEncodedAction,
     decodeIncoming: decodeIncomingAction,
     dismissMessage: dismissMessageAction,
-    setTier: setTierAction,
     setTheme: setThemeAction,
     setBioEncodingEnabled: setBioEncodingEnabledAction,
     updateAlias: updateAliasAction,
+    upgradeTier: upgradeTierAction,
+    manageSubscription: manageSubscriptionAction,
+    refreshVault: refreshVaultAction,
   };
 
   return <VaultContext.Provider value={value}>{children}</VaultContext.Provider>;
