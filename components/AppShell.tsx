@@ -5,21 +5,23 @@ import { useVault } from "@/context/VaultContext";
 import { tierConfig } from "@/lib/tiers";
 import { EncodeDecodeWorkspace } from "./EncodeDecodeWorkspace";
 import { FriendManager } from "./FriendManager";
+import { KeyboardHome } from "./KeyboardHome";
 import { MatrixRain } from "./MatrixRain";
 import { SettingsPanel } from "./SettingsPanel";
 import { Badge } from "./ui";
 
-type Tab = "workspace" | "connections" | "settings";
+type Tab = "home" | "workspace" | "connections" | "settings";
 
 const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "home", label: "Home" },
   { id: "workspace", label: "Encode / Decode" },
   { id: "connections", label: "Connections" },
   { id: "settings", label: "Settings" },
 ];
 
 export function AppShell() {
-  const { vault, refreshVault } = useVault();
-  const [tab, setTab] = useState<Tab>("workspace");
+  const { vault, refreshVault, lock } = useVault();
+  const [tab, setTab] = useState<Tab>("home");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -72,6 +74,12 @@ export function AppShell() {
       </nav>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-8">
+        {tab === "home" && (
+          <KeyboardHome
+            onNavigate={(t) => setTab(t)}
+            onLock={lock}
+          />
+        )}
         {tab === "workspace" && <EncodeDecodeWorkspace />}
         {tab === "connections" && <FriendManager />}
         {tab === "settings" && <SettingsPanel />}
