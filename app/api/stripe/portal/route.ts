@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = createUserScopedClient(accessToken);
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
   if (userError || !userData.user) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
   if (profileError || !profile?.stripe_customer_id) {
+    console.error("Stripe portal: could not load profile:", profileError);
     return NextResponse.json({ error: "No subscription found for this vault." }, { status: 400 });
   }
 

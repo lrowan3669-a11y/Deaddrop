@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const tier = body.tier;
 
   const supabase = createUserScopedClient(accessToken);
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
   if (userError || !userData.user) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
   if (profileError || !profile) {
+    console.error("Stripe checkout: could not load profile:", profileError);
     return NextResponse.json({ error: "Could not load your vault." }, { status: 400 });
   }
 
