@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       client_reference_id: user.id,
       line_items: [{ price: priceIdForTier(tier), quantity: 1 }],
       subscription_data: { metadata: { supabase_user_id: user.id } },
+      allow_promotion_codes: true,
       success_url: `${origin}/?billing=success`,
       cancel_url: `${origin}/?billing=cancelled`,
     });
