@@ -105,11 +105,17 @@ export async function fetchProfile(userId: string): Promise<Vault | null> {
 export async function createProfile(
   userId: string,
   alias: string,
+  agreedToTerms: boolean,
 ): Promise<{ profile: Vault | null; error: string | null }> {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .insert({ id: userId, alias, friend_code: generateFriendCode() })
+      .insert({
+        id: userId,
+        alias,
+        friend_code: generateFriendCode(),
+        terms_accepted_at: agreedToTerms ? new Date().toISOString() : null,
+      })
       .select("id, alias, tier, theme, friend_code, cipher_type, bio_encoding_enabled, created_at")
       .single();
     if (error || !data) return { profile: null, error: error?.message ?? "Could not create profile" };
@@ -299,5 +305,13 @@ export async function countMessagesToday(userId: string): Promise<number> {
     return count ?? 0;
   } catch {
     return 0;
+  }
+}
+
+export async function logModerationFlag(userId: string): Promise<void> {
+  try {
+    await supabase.from("moderation_flags").insert({ user_id: userId });
+  } catch {
+    // Best-effort abuse signal - not critical if it fails.
   }
 }

@@ -22,6 +22,7 @@ import {
   getSession,
   listConnections,
   listMessages,
+  logModerationFlag,
   onAuthStateChange,
   removeConnection,
   sendMessage,
@@ -53,6 +54,7 @@ interface VaultContextValue {
     password: string,
     alias: string,
     pin: string,
+    agreedToTerms: boolean,
   ) => Promise<ActionResult & { needsEmailConfirmation?: boolean }>;
   logIn: (email: string, password: string) => Promise<ActionResult>;
   verifyPin: (pin: string) => Promise<ActionResult>;
@@ -144,7 +146,10 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUpAction = useCallback(
-    async (email: string, password: string, alias: string, pin: string) => {
+    async (email: string, password: string, alias: string, pin: string, agreedToTerms: boolean) => {
+      if (!agreedToTerms) {
+        return { ok: false, error: "You must accept the Acceptable Use Policy to continue." };
+      }
       signupInProgress.current = true;
       try {
         const result = await signUp(email, password);
@@ -155,7 +160,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
           return { ok: true, needsEmailConfirmation: true };
         }
 
-        const { profile, error: createError } = await createProfile(result.userId, alias);
+        const { profile, error: createError } = await createProfile(result.userId, alias, agreedToTerms);
         if (createError || !profile) {
           return { ok: false, error: createError ?? "Could not create profile." };
         }
@@ -275,6 +280,7 @@ export function VaultProvider({ children }: { children: React.ReactNode }) {
     async (connectionId: string, plainText: string) => {
       if (!vault) return { ok: false, error: "No vault loaded" };
       if (containsBannedContent(plainText)) {
+        logModerationFlag(vault.id);
         return {
           ok: false,
           error: "This message violates DeadDrop's content policy and cannot be sent.",

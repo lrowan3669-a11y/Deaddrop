@@ -20,6 +20,7 @@ function SignedOutForms() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,9 +35,10 @@ function SignedOutForms() {
     if (password !== confirmPassword) return setError("Passwords do not match.");
     if (!isValidPin(pin)) return setError("PIN must be 4-6 digits.");
     if (pin !== confirmPin) return setError("PINs do not match.");
+    if (!agreedToTerms) return setError("You must accept the Acceptable Use Policy to continue.");
 
     setBusy(true);
-    const result = await signUp(email.trim(), password, alias.trim(), pin);
+    const result = await signUp(email.trim(), password, alias.trim(), pin, agreedToTerms);
     setBusy(false);
     if (!result.ok) {
       setError(result.error ?? "Could not create an account.");
@@ -144,9 +146,23 @@ function SignedOutForms() {
               autoComplete="off"
             />
           </label>
+          <label className="flex items-start gap-2 text-xs text-foreground/60">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I agree to DeadDrop&apos;s Acceptable Use Policy: I will not use
+              this app to create, share, or solicit illegal content,
+              including CSAM, and I understand violations may be reported to
+              law enforcement.
+            </span>
+          </label>
           {error && <p className="text-sm text-vault-locked">{error}</p>}
           {notice && <p className="text-sm text-vault-encoded">{notice}</p>}
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" disabled={busy || !agreedToTerms}>
             Create Vault
           </Button>
         </form>

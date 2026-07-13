@@ -37,12 +37,14 @@ create table if not exists public.profiles (
   pin_hash text,
   pin_attempts int not null default 0,
   pin_locked_until timestamptz,
+  terms_accepted_at timestamptz,
   created_at timestamptz not null default now()
 );
 
 alter table public.profiles add column if not exists pin_hash text;
 alter table public.profiles add column if not exists pin_attempts int not null default 0;
 alter table public.profiles add column if not exists pin_locked_until timestamptz;
+alter table public.profiles add column if not exists terms_accepted_at timestamptz;
 
 alter table public.profiles enable row level security;
 
@@ -368,3 +370,32 @@ create policy "messages_delete_participant"
         and auth.uid() in (c.user_a, c.user_b)
     )
   );
+
+-- ============================================================
+-- moderation_flags (metadata-only abuse signal, never message content)
+-- ============================================================
+
+-- Written once whenever the client-side content filter
+-- (lib/content-safety.ts) blocks a message from being sent. Stores nothing
+-- about what was typed - just that it happened, for whom, and when - so the
+-- operator can spot repeat offenders and disable their account from the
+-- Supabase dashboard. No select/update/delete grant for regular users:
+-- only the owner (via the dashboard or service role, which bypasses RLS)
+-- can review these.
+create table if not exists public.moderation_flags (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists moderation_flags_user_created_idx
+  on public.moderation_flags (user_id, created_at desc);
+
+alter table public.moderation_flags enable row level security;
+
+grant insert on public.moderation_flags to authenticated;
+
+drop policy if exists "moderation_flags_insert_own" on public.moderation_flags;
+create policy "moderation_flags_insert_own"
+  on public.moderation_flags for insert
+  with check (auth.uid() = user_id);
